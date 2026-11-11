@@ -1,0 +1,99 @@
+name: Extract OPLUS Subsystems
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/extract-oplus-subsystems.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extract-oplus:
+    name: Package 13 OPLUS subsystems
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Xen-Kernel-OOS
+        uses: actions/checkout@v4
+        with:
+          ref: Xen-OOS
+          fetch-depth: 1
+
+      - name: Extract subsystem directories
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OUT="oplus-subsystems"
+          mkdir -p "$OUT/drivers/oplus"
+
+          subsystems=(
+            frame_boost
+            midas
+            vnet
+            devinfo
+            project
+            process_reclaim
+            force_shutdown
+            storage
+            bootprof
+            dump_reason
+            sched_info
+            binder_strategy
+            shutdown_detect
+          )
+
+          for subsystem in "${subsystems[@]}"; do
+            source_dir="drivers/oplus/${subsystem}"
+
+            if [[ ! -d "$source_dir" ]]; then
+              echo "::error::Missing directory: $source_dir"
+              exit 1
+            fi
+
+            # Copy complete directory, including hidden files if present.
+            mkdir -p "$OUT/drivers/oplus/$subsystem"
+            cp -a "$source_dir/." "$OUT/drivers/oplus/$subsystem/"
+          done
+
+          cat > "$OUT/MANIFEST.txt" <<'EOF'
+OPLUS subsystem extraction
+Repository: Lvyana-ren/Xen-Kernel-OOS
+Branch: Xen-OOS
+Source path: drivers/oplus/
+
+Included directories:
+- frame_boost
+- midas
+- vnet
+- devinfo
+- project
+- process_reclaim
+- force_shutdown
+- storage
+- bootprof
+- dump_reason
+- sched_info
+- binder_strategy
+- shutdown_detect
+
+This archive contains the selected source directories only.
+It does not include integration/dependency changes or guarantee that
+these subsystems are enabled or required for OxygenOS boot.
+EOF
+
+          # Include the parent OPLUS Kconfig/Makefile as reference files.
+          cp -a drivers/oplus/Kconfig "$OUT/drivers/oplus/" 2>/dev/null || true
+          cp -a drivers/oplus/Makefile "$OUT/drivers/oplus/" 2>/dev/null || true
+
+          zip -qr "OPLUS-13-Subsystems-Xen-OOS.zip" "$OUT"
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OPLUS-13-Subsystems-Xen-OOS
+          path: OPLUS-13-Subsystems-Xen-OOS.zip
+          if-no-files-found: error
+          retention-days: 30
