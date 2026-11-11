@@ -2,9 +2,13 @@ name: Extract OPLUS Subsystems
 
 on:
   workflow_dispatch:
+
   push:
+    branches:
+      - Xen-OOS
     paths:
-      - ".github/workflows/extract-oplus-subsystems.yml"
+      - "drivers/oplus/**"
+      - ".github/workflows/extract oplus driver.yml"
 
 permissions:
   contents: read
