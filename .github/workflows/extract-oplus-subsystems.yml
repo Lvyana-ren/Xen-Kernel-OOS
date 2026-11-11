@@ -1,0 +1,69 @@
+name: Extract OPLUS Subsystems
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - Xen-OOS
+    paths:
+      - "drivers/oplus/**"
+      - ".github/workflows/extract-oplus-subsystems.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extract-oplus:
+    name: Package 13 OPLUS subsystems
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: Xen-OOS
+          fetch-depth: 1
+
+      - name: Package subsystem source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="oplus-subsystems"
+          mkdir -p "$OUT/drivers/oplus"
+
+          subsystems=(
+            frame_boost midas vnet devinfo project process_reclaim
+            force_shutdown storage bootprof dump_reason sched_info
+            binder_strategy shutdown_detect
+          )
+
+          for name in "${subsystems[@]}"; do
+            src="drivers/oplus/$name"
+            test -d "$src" || { echo "::error::Missing $src"; exit 1; }
+            mkdir -p "$OUT/drivers/oplus/$name"
+            cp -a "$src/." "$OUT/drivers/oplus/$name/"
+          done
+
+          for file in Kconfig Makefile; do
+            if [[ -f "drivers/oplus/$file" ]]; then
+              cp -a "drivers/oplus/$file" "$OUT/drivers/oplus/"
+            fi
+          done
+
+          cat > "$OUT/MANIFEST.txt" <<'EOF'
+OPLUS subsystem extraction
+Repository: Lvyana-ren/Xen-Kernel-OOS
+Branch: Xen-OOS
+Included: 13 directories under drivers/oplus/
+This is source extraction only; it does not include all dependencies
+or guarantee standalone integration/boot compatibility.
+EOF
+
+          zip -qr OPLUS-13-Subsystems-Xen-OOS.zip "$OUT"
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OPLUS-13-Subsystems-Xen-OOS
+          path: OPLUS-13-Subsystems-Xen-OOS.zip
+          if-no-files-found: error
+          retention-days: 30
