@@ -5,9 +5,6 @@ on:
   push:
     branches:
       - Xen-OOS
-    paths:
-      - "drivers/oplus/**"
-      - ".github/workflows/extract-oplus-subsystems.yml"
 
 permissions:
   contents: read
